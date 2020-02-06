@@ -145,13 +145,13 @@ class COCOeval:
             computeIoU = self.computeIoU
         elif p.iouType == 'keypoints':
             computeIoU = self.computeOks
-        self.ious = {(imgId, catId): computeIoU(imgId, catId) \
+        self.ious = {(imgId, catId): computeIoU(imgId, catId) \ # ループしてiouを一斉に計算
                         for imgId in p.imgIds
                         for catId in catIds}
 
         evaluateImg = self.evaluateImg
         maxDet = p.maxDets[-1]
-        self.evalImgs = [evaluateImg(imgId, catId, areaRng, maxDet)
+        self.evalImgs = [evaluateImg(imgId, catId, areaRng, maxDet) # ループしてevalを一斉に計算
                  for catId in catIds
                  for areaRng in p.areaRng
                  for imgId in p.imgIds
@@ -238,7 +238,7 @@ class COCOeval:
         :return: dict (single image results)
         '''
         p = self.params
-        if p.useCats:
+        if p.useCats: # カテゴリごとに計算するか、カテゴリ混ぜて計算することも可能
             gt = self._gts[imgId,catId]
             dt = self._dts[imgId,catId]
         else:
@@ -273,7 +273,7 @@ class COCOeval:
             for tind, t in enumerate(p.iouThrs):
                 for dind, d in enumerate(dt):
                     # information about best match so far (m=-1 -> unmatched)
-                    iou = min([t,1-1e-10])
+                    iou = min([t,1-1e-10]) # 1 - (1e-10) == 0.9999999999 
                     m   = -1
                     for gind, g in enumerate(gt):
                         # if this gt already matched, and not a crowd, continue
@@ -283,7 +283,7 @@ class COCOeval:
                         if m>-1 and gtIg[m]==0 and gtIg[gind]==1:
                             break
                         # continue to next gt unless better match made
-                        if ious[dind,gind] < iou:
+                        if ious[dind,gind] < iou: # iou比較
                             continue
                         # if match successful and best so far, store appropriately
                         iou=ious[dind,gind]
@@ -301,12 +301,12 @@ class COCOeval:
         return {
                 'image_id':     imgId,
                 'category_id':  catId,
-                'aRng':         aRng,
+                'aRng':         aRng, # 対象面積範囲の指定
                 'maxDet':       maxDet,
                 'dtIds':        [d['id'] for d in dt],
                 'gtIds':        [g['id'] for g in gt],
-                'dtMatches':    dtm,
-                'gtMatches':    gtm,
+                'dtMatches':    dtm, # iou閾値ごとの、detection結果とground truthのmatching
+                'gtMatches':    gtm, # iou閾値ごとの、detection結果とground truthのmatching
                 'dtScores':     [d['score'] for d in dt],
                 'gtIgnore':     gtIg,
                 'dtIgnore':     dtIg,
