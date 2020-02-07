@@ -372,10 +372,10 @@ class COCOeval:
                     npig = np.count_nonzero(gtIg==0 )
                     if npig == 0:
                         continue
-                    tps = np.logical_and(               dtm,  np.logical_not(dtIg) )
-                    fps = np.logical_and(np.logical_not(dtm), np.logical_not(dtIg) )
+                    tps = np.logical_and(               dtm,  np.logical_not(dtIg) ) # true positive
+                    fps = np.logical_and(np.logical_not(dtm), np.logical_not(dtIg) ) # false positive
 
-                    tp_sum = np.cumsum(tps, axis=1).astype(dtype=np.float)
+                    tp_sum = np.cumsum(tps, axis=1).astype(dtype=np.float)　
                     fp_sum = np.cumsum(fps, axis=1).astype(dtype=np.float)
                     for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum)):
                         tp = np.array(tp)
