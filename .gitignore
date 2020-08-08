@@ -14,3 +14,17 @@ PythonAPI/pycocotools/_mask.so
 PythonAPI/pycocotools/coco.pyc
 PythonAPI/pycocotools/cocoeval.pyc
 PythonAPI/pycocotools/mask.pyc
+
+# ref: https://github.com/open-mmlab/mmdetection/blob/68d860d6f1a4a1fb687f2512038f2cbce7c6b08d/.gitignore
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+# C extensions
+*.so
+
+build/
+*.egg-info/
+
+.venv
+data/

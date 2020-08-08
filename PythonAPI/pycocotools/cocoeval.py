@@ -187,6 +187,10 @@ class COCOeval:
         # compute iou between each dt and gt region
         iscrowd = [int(o['iscrowd']) for o in gt]
         ious = maskUtils.iou(d,g,iscrowd)
+        # iousのサイズは以下のように決まる
+        if len(ious) >= 1:
+            assert len(ious) == len(dt)
+            assert len(ious[0]) == len(gt)
         return ious
 
     def computeOks(self, imgId, catId):
@@ -253,7 +257,7 @@ class COCOeval:
             else:
                 g['_ignore'] = 0
 
-        # sort dt highest score first, sort gt ignore last
+        # sort gt ignore last, sort dt highest score first
         gtind = np.argsort([g['_ignore'] for g in gt], kind='mergesort')
         gt = [gt[i] for i in gtind]
         dtind = np.argsort([-d['score'] for d in dt], kind='mergesort')
@@ -265,10 +269,10 @@ class COCOeval:
         T = len(p.iouThrs)
         G = len(gt)
         D = len(dt)
-        gtm  = np.zeros((T,G))
-        dtm  = np.zeros((T,D))
-        gtIg = np.array([g['_ignore'] for g in gt])
-        dtIg = np.zeros((T,D))
+        gtm  = np.zeros((T,G)) # ground truthに対応するdetection結果のidを保持
+        dtm  = np.zeros((T,D)) # detection結果に対応するgrount truthのidを保持
+        gtIg = np.array([g['_ignore'] for g in gt]) # ground truthのignore flagを保持
+        dtIg = np.zeros((T,D)) # detection結果に対応するground truthのignore flagを保持
         if not len(ious)==0:
             for tind, t in enumerate(p.iouThrs):
                 for dind, d in enumerate(dt):
@@ -281,6 +285,7 @@ class COCOeval:
                             continue
                         # if dt matched to reg gt, and on ignore gt, stop
                         if m>-1 and gtIg[m]==0 and gtIg[gind]==1:
+                            # gtIgは0の列が前半、1の列が後半なので、このあとはずっとgtIgが1. よってbreakしてOK
                             break
                         # continue to next gt unless better match made
                         if ious[dind,gind] < iou:
@@ -303,13 +308,13 @@ class COCOeval:
                 'category_id':  catId,
                 'aRng':         aRng,
                 'maxDet':       maxDet,
-                'dtIds':        [d['id'] for d in dt],
+                'dtIds':        [d['id'] for d in dt], # detection scoreの高い順にidを保持
                 'gtIds':        [g['id'] for g in gt],
-                'dtMatches':    dtm,
-                'gtMatches':    gtm,
-                'dtScores':     [d['score'] for d in dt],
-                'gtIgnore':     gtIg,
-                'dtIgnore':     dtIg,
+                'dtMatches':    dtm, # np.ndarray shape == (len(iouThrs, len(dt)). detection結果に対応するgrount truthのidを保持. 二次元目はdetection scoreの高い順
+                'gtMatches':    gtm, # np.ndarray shape == (len(iouThrs), len(gt)). ground truthに対応するdetection結果のidを保持.
+                'dtScores':     [d['score'] for d in dt], # detection scoreを高い順に保持
+                'gtIgnore':     gtIg, # np.ndarray shape (len(gt)). ground truthのignore flagを保持
+                'dtIgnore':     dtIg, # np.ndarray shape == (len(iouThrs),len(dt))). detection結果に対応するground truthのignore flagを保持. 二次元目はdetection scoreの高い順
             }
 
     def accumulate(self, p = None):
@@ -369,8 +374,9 @@ class COCOeval:
                     dtm  = np.concatenate([e['dtMatches'][:,0:maxDet] for e in E], axis=1)[:,inds]
                     dtIg = np.concatenate([e['dtIgnore'][:,0:maxDet]  for e in E], axis=1)[:,inds]
                     gtIg = np.concatenate([e['gtIgnore'] for e in E])
-                    npig = np.count_nonzero(gtIg==0 )
+                    npig = np.count_nonzero(gtIg==0 ) # ignoreされてないground truthの数
                     if npig == 0:
+                        # 全てignoreの場合、つまり計算対象のground truthがない場合は飛ばす
                         continue
                     tps = np.logical_and(               dtm,  np.logical_not(dtIg) )
                     fps = np.logical_and(np.logical_not(dtm), np.logical_not(dtIg) )
@@ -395,6 +401,7 @@ class COCOeval:
                         # use python array gets significant speed improvement
                         pr = pr.tolist(); q = q.tolist()
 
+                        # precision(pr)は減少していく想定であり、もしそうでない場合は傘増しする（増加している部分があれば、手前部分を増やして増加で無くす）
                         for i in range(nd-1, 0, -1):
                             if pr[i] > pr[i-1]:
                                 pr[i-1] = pr[i]
@@ -425,6 +432,17 @@ class COCOeval:
         Note this functin can *only* be applied on the default parameter setting
         '''
         def _summarize( ap=1, iouThr=None, areaRng='all', maxDets=100 ):
+            """[summary]
+
+            Args:
+                ap (int, optional): AP or ARを示すflagで、APのとき1. Defaults to 1.
+                iouThr ([type], optional): [description]. Defaults to None.
+                areaRng (str, optional): [description]. Defaults to 'all'.
+                maxDets (int, optional): [description]. Defaults to 100.
+
+            Returns:
+                [type]: [description]
+            """
             p = self.params
             iStr = ' {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}'
             titleStr = 'Average Precision' if ap == 1 else 'Average Recall'
